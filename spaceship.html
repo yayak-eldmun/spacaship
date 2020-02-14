@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+        #center {
+            width: 700px;
+            height: 500px;
+            margin: 0px auto;
+            border: 1px solid red;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="center">
+        <canvas style="border:1px solid #00ff51, center" id="gameCanvas" width="700" height="500"></canvas>
+    </div>
+    <script>
+    // canvas
+        const canv = document.getElementById("gameCanvas")
+        const ctx = canv.getContext("2d")
+    // gamefps
+        const FPS = 30
+    // ship
+        const turn_speed = 360 
+        const friction = 0.3
+        const ship_size = 30
+        const ship_thrust = 4
+        const ship_blink = 0.1
+        const ship_invdur = 3
+    // asteroid
+        const aster_num = 10
+        const aster_size = 100
+        const aster_spd = 50
+        const aster_vert = 13
+        const aster_tex = 0.2
+    // collision
+        const sh_bounding = false
+        const sh_centerdot = true
+    // explosion
+        const ship_explo = 0.3
+    // laser
+        const laser_max = 100
+        const laser_speed = 500
+        const laser_dist = 0.6
+    // frame per second
+        setInterval(update, 1000 / FPS)
+    // add even listener key pres and release
+        document.addEventListener("keydown", keyDown)
+        document.addEventListener("keyup", keyUp)
+    // key press from keycode
+        function keyDown () {
+            switch(event.keyCode) {
+            // spasi
+                case 32:
+                    shootLaser()
+                    break
+            // kiri
+                case 37:
+                    ship.rot =turn_speed / 180 * Math.PI / FPS
+                    break
+            // atas
+                case 38:
+                    ship.thrusting = true
+                    break
+            // kanan
+                case 39:
+                    ship.rot =-turn_speed / 180 * Math.PI / FPS
+                    break
+            }
+        }
+    // /** @type {KeyboardEvent} */ ev
+        function keyUp () {
+            switch(event.keyCode) {
+            // spasi
+                case 32:
+                    ship.canShoot = true
+                    break
+            // kiri
+                case 37:
+                    ship.rot = 0
+                    break
+            // atas
+                case 38:
+                    ship.thrusting = false
+                    break
+            // kanan
+                case 39:
+                    ship.rot = 0
+                    break
+            }
+        }
+    // var ship to object nship
+        var ship = newShip()
+    // func return newship after collosion
+        function newShip(){
+            return {
+                x: canv.width / 2,
+                y: canv.height / 2,
+                r: ship_size / 2,
+                a: 90 / 180 * Math.PI,
+                rot: 0,
+                thrusting: false,
+                explodeTime:0,
+                blinkNum: Math.ceil(ship_invdur / ship_blink),
+                blinkTime: Math.ceil(ship_blink * FPS),
+                canShoot: true,
+                lasers:[],
+                thrust: {
+                    x: 0,
+                    y: 0
+                }
+            }
+        }
+    // func laser
+        function shootLaser(){
+            if(ship.canShoot && ship.lasers.length < laser_max){
+                ship.lasers.push(
+                    {
+                        x: ship.x + 4 / 3 * ship.r * Math.cos(ship.a),
+                        y: ship.y - 4 / 3 * ship.r * Math.sin(ship.a),
+                        xv: laser_speed* Math.cos(ship.a)/FPS,
+                        yv: -laser_speed* Math.sin(ship.a)/FPS,
+                        dist: 0
+                    }
+                )
+            }
+            ship.canShoot = false
+        }
+    // func jarak pesawat
+        function distBetweenPoint(x1,y1,x2,y2){
+            return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2))
+        }
+    // func fill when col
+        function explodeShip(){
+            ship.explodeTime=Math.ceil(ship_explo * FPS)
+            // ctx.fillStyle = "lime"
+            // ctx.strokeStyle="red"
+            // ctx.beginPath()
+            // ctx.arc(ship.x,ship.y,ship.r,0,Math.PI*2,false)
+            // ctx.fill()
+            // ctx.stroke()
+        }
+    // asteroid
+        var aster=[]
+        createAsteroid()
+    // func create aster
+        function createAsteroid(){
+            aster=[];
+            var x,y
+            for (var i = 0; i < aster_num; i++){
+                do {
+                    x = Math.floor(Math.random() * canv.width)
+                    y = Math.floor(Math.random() * canv.height)
+                } while (distBetweenPoint(ship.x, ship.y, x, y) < aster_size * 2 + ship.r)
+                aster.push(newAsteroid(x, y))
+            }
+        }
+    // func new aster
+        function newAsteroid(x,y){
+        // object
+            var aster = {
+                x: x,
+                y: y,
+                xv: Math.random() * aster_spd / FPS * (Math.random() < 0.5 ? 1 : -1),
+                yv: Math.random() * aster_spd / FPS * (Math.random() < 0.5 ? 1 : -1),
+                r: aster_size / 2,
+                a: Math.random() * Math.PI * 2,
+                vert: Math.floor(Math.random() * (aster_vert + 1) + aster_vert / 2),
+                offs: []
+            }
+        // loop lakukan push ke array di objek aster
+            for (var i=0; i<aster.vert; i++) {
+                aster.offs.push(Math.random() * aster_tex * 2 + 1 - aster_tex)
+            }
+            return aster
+        }
+    // func return newship after collosion
+        // function newShip(){
+        //     return {
+        //         x: canv.width / 2,
+        //         y: canv.height / 2,
+        //         r: ship_size / 2,
+        //         a: 90 / 180 * Math.PI,
+        //         rot: 0,
+        //         thrusting: false,
+        //         explodeTime:0,
+        //         blinkNum: Math.ceil(ship_invdur / ship_blink),
+        //         blinkTime: Math.ceil(ship_blink * FPS),
+        //         canShoot: true,
+        //         lasers:[],
+        //         thrust: {
+        //             x: 0,
+        //             y: 0
+        //         }
+        //     }
+        // }
+    //
+        function update(){
+            var blinkOn = ship.blinkNum % 2 == 0
+            var exploding = ship.explodeTime>0
+        // background
+            ctx.fillStyle = "black"
+            ctx.fillRect(0, 0, canv.width, canv.height)
+        // spaceship
+        // exploding
+            if(!exploding){
+                if(blinkOn) {
+                // draw ship
+                    ctx.fillStyle ="green"
+                    ctx.strokeStyle = "green"
+                    ctx.lineWidth = ship_size / 20
+                    ctx.beginPath()
+                    ctx.moveTo(
+                        ship.x + 4 / 3 * ship.r * Math.cos(ship.a), ship.y - 4 / 3 * ship.r * Math.sin(ship.a)
+                    )
+                    ctx.lineTo(
+                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) + Math.sin(ship.a)), ship.y + ship.r * (2 / 3 * Math.sin(ship.a) - Math.cos(ship.a))
+                    )
+                    ctx.lineTo(
+                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) - Math.sin(ship.a)), ship.y + ship.r * (2 / 3 * Math.sin(ship.a) + Math.cos(ship.a))
+                    )
+                    ctx.closePath()
+                    ctx.stroke()
+                    // ctx.fill()
+                }
+            // blink after coll
+                if (ship.blinkNum > 0){
+                // reduce blink time ship from newship key value
+                    ship.blinkTime--
+                // reduce blink num
+                    if(ship.blinkTime==0){
+                        ship.blinkTime = Math.ceil(ship_blink * FPS)
+                        ship.blinkNum--
+                    }
+                }
+            }else{
+        // explosion image
+                ctx.fillStyle="red"
+                ctx.beginPath()
+                ctx.arc(ship.x, ship.y, ship.r*1.5, 0, Math.PI * 2, false)
+                ctx.fill()
+                ctx.fillStyle="orange"
+                ctx.beginPath()
+                ctx.arc(ship.x, ship.y, ship.r*1.2, 0, Math.PI * 2, false)
+                ctx.fill()
+                ctx.fillStyle="yellow"
+                ctx.beginPath()
+                ctx.arc(ship.x, ship.y, ship.r*0.9, 0, Math.PI * 2, false)
+                ctx.fill()
+                ctx.fillStyle="white"
+                ctx.beginPath()
+                ctx.arc(ship.x, ship.y, ship.r*0.6, 0, Math.PI * 2, false)
+                ctx.fill()
+            }
+        // ship circ col
+            if (sh_bounding){
+                    ctx.strokeStyle="lime"
+                    ctx.beginPath()
+                    ctx.arc(ship.x, ship.y, ship.r, 0, Math.PI * 2, false)
+                    ctx.stroke()
+                }
+            // if(sh_centerdot){
+            //     ctx.fillStyle="red"
+            //     ctx.fillRect(ship.x-1,ship.y-1,2,2)
+            // }
+        // laser
+            for(var i=0; i < ship.lasers.length; i++){
+                ctx.fillStyle="yellow"
+                ctx.beginPath()
+                ctx.arc(ship.lasers[i].x,ship.lasers[i].y,ship_size/15,0,Math.PI*2,false)
+                ctx.fill()
+            }
+            if(!exploding){
+            // collision
+                if(ship.blinkNum==0){
+                    for(var i=0; i<aster.length; i++){
+                        if (distBetweenPoint(ship.x,ship.y,aster[i].x,aster[i].y)<ship.r+aster[i].r){
+                            explodeShip()
+                        }
+                    }
+                }
+            // shiprotasi
+                ship.a += ship.rot
+            // maju
+                ship.x += ship.thrust.x
+                ship.y += ship.thrust.y
+            }else{
+                ship.explodeTime--
+                if(ship.explodeTime==0){
+                    ship = newShip()
+                }
+            }
+        // maju
+            if (ship.thrusting){
+                ship.thrust.x += ship_thrust * Math.cos(ship.a) / FPS
+                ship.thrust.y -= ship_thrust * Math.sin(ship.a) / FPS
+                
+                if(!exploding && blinkOn){
+            // efek api roket
+                    ctx.fillStyle ="Orange"
+                    ctx.strokeStyle ="yellow"
+                    ctx.lineWidth = ship_size / 20
+                    ctx.beginPath()
+                    ctx.moveTo(
+                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) + 0.5 * Math.sin(ship.a)), ship.y + ship.r * (2 / 3 * Math.sin(ship.a) - 0.5 * Math.cos(ship.a))
+                    )
+                    ctx.lineTo(
+                        ship.x -ship.r * 4/3 * Math.cos(ship.a), ship.y +ship.r * 4/3 * Math.sin(ship.a)
+                    )
+                    ctx.lineTo(
+                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) - 0.5*Math.sin(ship.a)), ship.y + ship.r * (2 / 3 * Math.sin(ship.a) + 0.5*Math.cos(ship.a))
+                    )
+                    ctx.closePath()
+                    ctx.fill()
+                    ctx.stroke()
+                }
+            } else {
+                ship.thrust.x -= friction * ship.thrust.x / FPS
+                ship.thrust.y -= friction * ship.thrust.y / FPS
+            }
+        // asteroid
+            var x, y, r, a, vert, offs
+            for(var i = 0; i < aster.length; i++){
+                ctx.strokeStyle = "red"
+                ctx.lineWidth = ship_size / 20
+            // 
+                x = aster[i].x
+                y = aster[i].y
+                r = aster[i].r
+                a = aster[i].a
+                vert = aster[i].vert
+                offs = aster[i].offs
+            // 
+                ctx.beginPath()
+                ctx.moveTo(
+                    x + r * offs[0] * Math.cos(a),
+                    y + r * offs[0] * Math.sin(a)
+                )
+            // 
+                for (var j = 1; j < vert; j++){
+                    ctx.lineTo(
+                        x + r * offs[j]*Math.cos(a+j*Math.PI * 2 / vert),
+                        y + r * offs[j]*Math.sin(a+j*Math.PI * 2 / vert)
+                    )
+                }
+                ctx.closePath()
+                ctx.stroke()
+            // asteroid collision
+                if (sh_bounding){
+                    ctx.strokeStyle="lime"
+                    ctx.beginPath()
+                    ctx.arc(x, y, r, 0, Math.PI *2, false)
+                    ctx.stroke()
+                }
+            }
+        // ship edge canv
+            if (ship.x < 0 - ship.r){
+                ship.x = canv.width + ship.r
+            } else if (ship.x > canv.width + ship.r){
+                ship.x = 0 - ship.r
+            }
+            if (ship.y < 0 - ship.r){
+                ship.y = canv.height + ship.r
+            } else if (ship.y > canv.height + ship.r){
+                ship.y = 0 - ship.r
+            }
+        // move laser
+            for (var i=ship.lasers.length-1;i>=0;i--){
+            // 
+                if (ship.lasers[i].dist>laser_dist*canv.width){
+                    ship.lasers.splice(i,1)
+                    continue
+                }
+            // move laser
+                ship.lasers[i].x+=ship.lasers[i].xv
+                ship.lasers[i].y+=ship.lasers[i].yv
+                ship.lasers[i].dist+=Math.sqrt(Math.pow(ship.lasers[i].yv,2))
+            // laser edge canv
+                if(ship.lasers[i].x<0){
+                    ship.lasers[i].x=canv.width
+                }else if(ship.lasers[i].x>canv.width){
+                    ship.lasers[i].x=0
+                }
+                if(ship.lasers[i].y<0){
+                    ship.lasers[i].y=canv.height
+                }else if(ship.lasers[i].y>canv.height){
+                    ship.lasers[i].y=0
+                }
+            }
+        // move aster
+            for(var i=0; i<aster.length; i++){
+                aster[i].x += aster[i].xv
+                aster[i].y += aster[i].yv
+            // aster edge canvas
+                if (aster[i].x < 0 - aster[i].r){
+                    aster[i].x = canv.width + aster[i].r
+                } else if (aster[i].x > canv.width + aster[i].r){
+                    aster[i].x = 0 - aster[i].r
+                }
+                if (aster[i].y < 0 - aster[i].r){
+                    aster[i].y = canv.height + aster[i].r
+                } else if (aster[i].y > canv.height +   aster[i].r){
+                    aster[i].y = 0 - aster[i].r
+                }
+            }
+        // 
+            // ctx.fillStyle = "green"
+            // ctx.fillRect(ship.x - 1, ship.y - 1, 2, 2)
+        }
+        </script>
+</body>
+
+</html>
+
+<!-- timer -->
+<!-- interface game inpute name and dificulty -->
+<!-- pausegame -->
+<!-- dificulty -->
+<!-- score record -->
+<!-- score board -->
+
+<!-- github new repository -->
