@@ -47,7 +47,8 @@
     // laser
         const laser_max = 100
         const laser_speed = 500
-        const laser_dist = 0.6
+        const laser_dist = 0.5
+        const laser_explo = 0.1
     // frame per second
         setInterval(update, 1000 / FPS)
     // add even listener key pres and release
@@ -122,11 +123,12 @@
             if(ship.canShoot && ship.lasers.length < laser_max){
                 ship.lasers.push(
                     {
-                        x: ship.x + 4 / 3 * ship.r * Math.cos(ship.a),
-                        y: ship.y - 4 / 3 * ship.r * Math.sin(ship.a),
+                        x: ship.x +4/3 * ship.r * Math.cos(ship.a),
+                        y: ship.y -4 / 3 * ship.r * Math.sin(ship.a),
                         xv: laser_speed* Math.cos(ship.a)/FPS,
                         yv: -laser_speed* Math.sin(ship.a)/FPS,
-                        dist: 0
+                        dist: 0,
+                        explodeTime:0
                     }
                 )
             }
@@ -158,18 +160,18 @@
                     x = Math.floor(Math.random() * canv.width)
                     y = Math.floor(Math.random() * canv.height)
                 } while (distBetweenPoint(ship.x, ship.y, x, y) < aster_size * 2 + ship.r)
-                aster.push(newAsteroid(x, y))
+                aster.push(newAsteroid(x, y,Math.ceil(aster_size / 2)))
             }
         }
     // func new aster
-        function newAsteroid(x,y){
+        function newAsteroid(x,y,r){
         // object
             var aster = {
                 x: x,
                 y: y,
                 xv: Math.random() * aster_spd / FPS * (Math.random() < 0.5 ? 1 : -1),
                 yv: Math.random() * aster_spd / FPS * (Math.random() < 0.5 ? 1 : -1),
-                r: aster_size / 2,
+                r: r,
                 a: Math.random() * Math.PI * 2,
                 vert: Math.floor(Math.random() * (aster_vert + 1) + aster_vert / 2),
                 offs: []
@@ -179,6 +181,21 @@
                 aster.offs.push(Math.random() * aster_tex * 2 + 1 - aster_tex)
             }
             return aster
+        }
+    // func dest aster
+        function destroyAsteroid(index){
+            var x = aster[index].x
+            var y = aster[index].y
+            var r = aster[index].r
+        // split aster
+            if (r==Math.ceil(aster_size/2)){
+                aster.push(newAsteroid(x,y,Math.ceil(aster_size/4)))
+                aster.push(newAsteroid(x,y,Math.ceil(aster_size/4)))
+            }else if(r==Math.ceil(aster_size/4)){
+                aster.push(newAsteroid(x,y,Math.ceil(aster_size/8)))
+                aster.push(newAsteroid(x,y,Math.ceil(aster_size/8)))
+            }
+            aster.splice(index, 1)
         }
     // func return newship after collosion
         // function newShip(){
@@ -205,7 +222,7 @@
             var blinkOn = ship.blinkNum % 2 == 0
             var exploding = ship.explodeTime>0
         // background
-            ctx.fillStyle = "black"
+            ctx.fillStyle = "grey"
             ctx.fillRect(0, 0, canv.width, canv.height)
         // spaceship
         // exploding
@@ -271,10 +288,47 @@
             // }
         // laser
             for(var i=0; i < ship.lasers.length; i++){
-                ctx.fillStyle="yellow"
-                ctx.beginPath()
-                ctx.arc(ship.lasers[i].x,ship.lasers[i].y,ship_size/15,0,Math.PI*2,false)
-                ctx.fill()
+                if(ship.lasers[i].explodeTime==0){
+                // draw laser
+                    ctx.fillStyle="yellow"
+                    ctx.beginPath()
+                    ctx.arc(ship.lasers[i].x,ship.lasers[i].y,ship_size/15,0,Math.PI*2,false)
+                    ctx.fill()
+                }else{
+                // draw explod laser
+                    ctx.fillStyle="Red"
+                    ctx.beginPath()
+                    ctx.arc(ship.lasers[i].x,ship.lasers[i].y,ship.r*0.75,0,Math.PI*2,false)
+                    ctx.fill()
+                    ctx.fillStyle="orange"
+                    ctx.beginPath()
+                    ctx.arc(ship.lasers[i].x,ship.lasers[i].y,ship.r*0.5,0,Math.PI*2,false)
+                    ctx.fill()
+                    ctx.fillStyle="yellow"
+                    ctx.beginPath()
+                    ctx.arc(ship.lasers[i].x,ship.lasers[i].y,ship.r*0.25,0,Math.PI*2,false)
+                    ctx.fill()
+                }
+            }
+        // laser hit aster
+            var ax, ay, ar, lx, ly
+            for(var i=aster.length-1;i>=0;i--){
+            // grab aster properties
+                ax=aster[i].x
+                ay=aster[i].y
+                ar=aster[i].r
+            // loop over laser
+                for(var j=ship.lasers.length -1;j>=0; j--){
+                // laser prop
+                    lx=ship.lasers[j].x
+                    ly=ship.lasers[j].y
+                    if (ship.lasers[j].explodeTime==0 && distBetweenPoint(ax, ay,lx,ly)< ar){
+                // destroy the aster && laser explod 
+                        destroyAsteroid(i)
+                        ship.lasers[j].explodeTime=Math.ceil(laser_explo*FPS)
+                        break
+                    }
+                }
             }
             if(!exploding){
             // collision
@@ -282,6 +336,8 @@
                     for(var i=0; i<aster.length; i++){
                         if (distBetweenPoint(ship.x,ship.y,aster[i].x,aster[i].y)<ship.r+aster[i].r){
                             explodeShip()
+                            destroyAsteroid(i)
+                            break
                         }
                     }
                 }
@@ -377,10 +433,19 @@
                     ship.lasers.splice(i,1)
                     continue
                 }
-            // move laser
-                ship.lasers[i].x+=ship.lasers[i].xv
-                ship.lasers[i].y+=ship.lasers[i].yv
-                ship.lasers[i].dist+=Math.sqrt(Math.pow(ship.lasers[i].yv,2))
+            // laser explosion
+                if(ship.lasers[i].explodeTime > 0){
+                    ship.lasers[i].explodeTime--
+                    if(ship.lasers[i].explodeTime==0){
+                        ship.lasers.splice(i,1)
+                        continue
+                    }
+                }else{
+                // move laser
+                    ship.lasers[i].x+=ship.lasers[i].xv
+                    ship.lasers[i].y+=ship.lasers[i].yv
+                    ship.lasers[i].dist+=Math.sqrt(Math.pow(ship.lasers[i].yv,2))
+                }
             // laser edge canv
                 if(ship.lasers[i].x<0){
                     ship.lasers[i].x=canv.width
@@ -415,14 +480,4 @@
         }
         </script>
 </body>
-
 </html>
-
-<!-- timer -->
-<!-- interface game inpute name and dificulty -->
-<!-- pausegame -->
-<!-- dificulty -->
-<!-- score record -->
-<!-- score board -->
-
-<!-- github new repository -->
