@@ -30,11 +30,11 @@
         const turn_speed = 360 
         const friction = 0.3
         const ship_size = 30
-        const ship_thrust = 4
+        const ship_thrust = 3
         const ship_blink = 0.1
         const ship_invdur = 3
     // asteroid
-        const aster_num = 10
+        const aster_num = 1
         const aster_size = 100
         const aster_spd = 50
         const aster_vert = 13
@@ -45,17 +45,28 @@
     // explosion
         const ship_explo = 0.3
     // laser
-        const laser_max = 100
+        const laser_max = 10
         const laser_speed = 500
-        const laser_dist = 0.5
+        const laser_dist = 0.3
         const laser_explo = 0.1
+    // game text
+        const text_fadetm = 2.5
+        const text_size = 40
+    // gameplay
+        const game_lives = 3
     // frame per second
         setInterval(update, 1000 / FPS)
+    // game parameters
+        var level, roid, ship, text, textAlpha,lives
+        newGame()
     // add even listener key pres and release
         document.addEventListener("keydown", keyDown)
         document.addEventListener("keyup", keyUp)
     // key press from keycode
         function keyDown () {
+            if(ship.dead){
+                return
+            }
             switch(event.keyCode) {
             // spasi
                 case 32:
@@ -77,6 +88,9 @@
         }
     // /** @type {KeyboardEvent} */ ev
         function keyUp () {
+            if(ship.dead){
+                return
+            }
             switch(event.keyCode) {
             // spasi
                 case 32:
@@ -112,6 +126,7 @@
                 blinkTime: Math.ceil(ship_blink * FPS),
                 canShoot: true,
                 lasers:[],
+                dead: false,
                 thrust: {
                     x: 0,
                     y: 0
@@ -138,6 +153,24 @@
         function distBetweenPoint(x1,y1,x2,y2){
             return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2))
         }
+        function drawShip(x,y,a, colour="white"){
+        // draw ship
+            ctx.strokeStyle = colour
+            ctx.lineWidth = ship_size / 20
+            ctx.beginPath()
+            ctx.moveTo(
+                x + 4 / 3 * ship.r * Math.cos(a), y - 4 / 3 * ship.r * Math.sin(a)
+            )
+            ctx.lineTo(
+                x - ship.r * (2 / 3 * Math.cos(a) + Math.sin(a)), y + ship.r * (2 / 3 * Math.sin(a) - Math.cos(a))
+            )
+            ctx.lineTo(
+                x - ship.r * (2 / 3 * Math.cos(a) - Math.sin(a)), y + ship.r * (2 / 3 * Math.sin(a) + Math.cos(a))
+            )
+            ctx.closePath()
+            ctx.stroke()
+            // ctx.fill()
+        }
     // func fill when col
         function explodeShip(){
             ship.explodeTime=Math.ceil(ship_explo * FPS)
@@ -148,6 +181,12 @@
             // ctx.fill()
             // ctx.stroke()
         }
+    // func gameov
+        function gameOver(){
+            ship.dead=true
+            text="game over"
+            textAlpha=1.0
+        }
     // asteroid
         var aster=[]
         createAsteroid()
@@ -155,7 +194,7 @@
         function createAsteroid(){
             aster=[];
             var x,y
-            for (var i = 0; i < aster_num; i++){
+            for (var i = 0; i < aster_num + level; i++){
                 do {
                     x = Math.floor(Math.random() * canv.width)
                     y = Math.floor(Math.random() * canv.height)
@@ -166,11 +205,12 @@
     // func new aster
         function newAsteroid(x,y,r){
         // object
+            var lvlMulti =1+0.1*level
             var aster = {
                 x: x,
                 y: y,
-                xv: Math.random() * aster_spd / FPS * (Math.random() < 0.5 ? 1 : -1),
-                yv: Math.random() * aster_spd / FPS * (Math.random() < 0.5 ? 1 : -1),
+                xv: Math.random() * aster_spd * lvlMulti / FPS * (Math.random() < 0.5 ? 1 : -1),
+                yv: Math.random() * aster_spd * lvlMulti / FPS * (Math.random() < 0.5 ? 1 : -1),
                 r: r,
                 a: Math.random() * Math.PI * 2,
                 vert: Math.floor(Math.random() * (aster_vert + 1) + aster_vert / 2),
@@ -181,6 +221,18 @@
                 aster.offs.push(Math.random() * aster_tex * 2 + 1 - aster_tex)
             }
             return aster
+        }
+    // func newgame
+        function newGame(){
+            level = 0
+            ship = newShip()
+            newLevel()
+            lives =game_lives
+        }
+        function newLevel(){
+            text = "level " + (level + 1 )
+            textAlpha = 1.0
+            createAsteroid()
         }
     // func dest aster
         function destroyAsteroid(index){
@@ -196,6 +248,11 @@
                 aster.push(newAsteroid(x,y,Math.ceil(aster_size/8)))
             }
             aster.splice(index, 1)
+        // new level if no aster
+            if(aster.length==0){
+                level++
+                newLevel()
+            }
         }
     // func return newship after collosion
         // function newShip(){
@@ -227,24 +284,8 @@
         // spaceship
         // exploding
             if(!exploding){
-                if(blinkOn) {
-                // draw ship
-                    ctx.fillStyle ="green"
-                    ctx.strokeStyle = "green"
-                    ctx.lineWidth = ship_size / 20
-                    ctx.beginPath()
-                    ctx.moveTo(
-                        ship.x + 4 / 3 * ship.r * Math.cos(ship.a), ship.y - 4 / 3 * ship.r * Math.sin(ship.a)
-                    )
-                    ctx.lineTo(
-                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) + Math.sin(ship.a)), ship.y + ship.r * (2 / 3 * Math.sin(ship.a) - Math.cos(ship.a))
-                    )
-                    ctx.lineTo(
-                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) - Math.sin(ship.a)), ship.y + ship.r * (2 / 3 * Math.sin(ship.a) + Math.cos(ship.a))
-                    )
-                    ctx.closePath()
-                    ctx.stroke()
-                    // ctx.fill()
+                if(blinkOn  && !ship.dead) {
+                    drawShip(ship.x,ship.y,ship.a)
                 }
             // blink after coll
                 if (ship.blinkNum > 0){
@@ -310,6 +351,23 @@
                     ctx.fill()
                 }
             }
+        // game text
+            if(textAlpha>=0){
+                ctx.textAlign="center"
+                ctx.textBaseline="middle"
+                ctx.fillStyle="rgba(255, 255, 255, " + textAlpha + ")"
+                ctx.font = "small-caps " + text_size + "px helvetica neue"
+                ctx.fillText(text, canv.width/2, canv.height * 0.75)
+                textAlpha -= (1.0 / text_fadetm / FPS)
+            }else if(ship.dead){
+                newGame()
+            }
+        // draw lives
+            var lifeColour
+            for(var i=0; i<lives;i++){
+                lifeColour = exploding && i==lives - 1 ? "red" : "white"
+                drawShip(ship_size+i*ship_size*1.2,ship_size,0.5* Math.PI, lifeColour)
+            }
         // laser hit aster
             var ax, ay, ar, lx, ly
             for(var i=aster.length-1;i>=0;i--){
@@ -332,7 +390,7 @@
             }
             if(!exploding){
             // collision
-                if(ship.blinkNum==0){
+                if(ship.blinkNum==0&& !ship.dead){
                     for(var i=0; i<aster.length; i++){
                         if (distBetweenPoint(ship.x,ship.y,aster[i].x,aster[i].y)<ship.r+aster[i].r){
                             explodeShip()
@@ -349,11 +407,16 @@
             }else{
                 ship.explodeTime--
                 if(ship.explodeTime==0){
-                    ship = newShip()
+                    lives--
+                    if(lives==0){
+                        gameOver()
+                    }else{
+                        ship = newShip()
+                    }
                 }
             }
         // maju
-            if (ship.thrusting){
+            if (ship.thrusting && !ship.dead){
                 ship.thrust.x += ship_thrust * Math.cos(ship.a) / FPS
                 ship.thrust.y -= ship_thrust * Math.sin(ship.a) / FPS
                 
