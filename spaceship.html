@@ -21,9 +21,6 @@
         <canvas style="border:1px solid #00ff51, center" id="gameCanvas" width="700" height="500"></canvas>
     </div>
     <script>
-    // canvas
-        const canv = document.getElementById("gameCanvas")
-        const ctx = canv.getContext("2d")
     // gamefps
         const FPS = 30
     // ship
@@ -54,14 +51,90 @@
         const text_size = 40
     // gameplay
         const game_lives = 3
-    // frame per second
-        setInterval(update, 1000 / FPS)
+        const point_large = 20
+        const point_medium = 50
+        const point_small = 100
+        const key_score = "highscore"
+    // canvas
+        const canv = document.getElementById("gameCanvas")
+        const ctx = canv.getContext("2d")
     // game parameters
-        var level, roid, ship, text, textAlpha,lives
+        var level, roid, ship, text, textAlpha,lives, score,scoreHigh
         newGame()
     // add even listener key pres and release
         document.addEventListener("keydown", keyDown)
         document.addEventListener("keyup", keyUp)
+    // frame per second
+        setInterval(update, 1000 / FPS)
+    // func create aster
+        function createAsteroid(){
+            aster=[];
+            var x,y
+            for (var i = 0; i < aster_num + level; i++){
+                do {
+                    x = Math.floor(Math.random() * canv.width)
+                    y = Math.floor(Math.random() * canv.height)
+                } while (distBetweenPoint(ship.x, ship.y, x, y) < aster_size * 2 + ship.r)
+                aster.push(newAsteroid(x, y,Math.ceil(aster_size / 2)))
+            }
+        }
+    // func dest aster
+        function destroyAsteroid(index){
+            var x = aster[index].x
+            var y = aster[index].y
+            var r = aster[index].r
+        // split aster
+            if (r==Math.ceil(aster_size/2)){
+                aster.push(newAsteroid(x,y,Math.ceil(aster_size/4)))
+                aster.push(newAsteroid(x,y,Math.ceil(aster_size/4)))
+                score+=point_large
+            }else if(r==Math.ceil(aster_size/4)){
+                aster.push(newAsteroid(x,y,Math.ceil(aster_size/8)))
+                aster.push(newAsteroid(x,y,Math.ceil(aster_size/8)))
+                score+=point_medium
+            }else{
+                score += point_small
+            }
+        // cek highscore
+            if(score>scoreHigh){
+                scoreHigh=score
+                localStorage.setItem(key_score,scoreHigh)
+            }
+            aster.splice(index, 1)
+        // new level if no aster
+            if(aster.length==0){
+                level++
+                newLevel()
+            }
+        }
+    // func jarak pesawat
+        function distBetweenPoint(x1,y1,x2,y2){
+            return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2))
+        }
+        function drawShip(x,y,a, colour="white"){
+        // draw ship
+            ctx.strokeStyle = colour
+            ctx.lineWidth = ship_size / 20
+            ctx.beginPath()
+            ctx.moveTo(
+                x + 4 / 3 * ship.r * Math.cos(a), y - 4 / 3 * ship.r * Math.sin(a)
+            )
+            ctx.lineTo(
+                x - ship.r * (2 / 3 * Math.cos(a) + Math.sin(a)), y + ship.r * (2 / 3 * Math.sin(a) - Math.cos(a))
+            )
+            ctx.lineTo(
+                x - ship.r * (2 / 3 * Math.cos(a) - Math.sin(a)), y + ship.r * (2 / 3 * Math.sin(a) + Math.cos(a))
+            )
+            ctx.closePath()
+            ctx.stroke()
+            // ctx.fill()
+        }
+    // func gameov
+        function gameOver(){
+            ship.dead=true
+            text="game over"
+            textAlpha=1.0
+        }
     // key press from keycode
         function keyDown () {
             if(ship.dead){
@@ -110,8 +183,45 @@
                     break
             }
         }
-    // var ship to object nship
-        var ship = newShip()
+    // func new aster
+        function newAsteroid(x,y,r){
+        // object
+            var lvlMulti =1+0.1*level
+            var aster = {
+                x: x,
+                y: y,
+                xv: Math.random() * aster_spd * lvlMulti / FPS * (Math.random() < 0.5 ? 1 : -1),
+                yv: Math.random() * aster_spd * lvlMulti / FPS * (Math.random() < 0.5 ? 1 : -1),
+                r: r,
+                a: Math.random() * Math.PI * 2,
+                vert: Math.floor(Math.random() * (aster_vert + 1) + aster_vert / 2),
+                offs: []
+            }
+        // loop lakukan push ke array di objek aster
+            for (var i=0; i<aster.vert; i++) {
+                aster.offs.push(Math.random() * aster_tex * 2 + 1 - aster_tex)
+            }
+            return aster
+        }
+    // func newgame
+        function newGame(){
+            level = 0
+            lives =game_lives
+            score=0
+            ship = newShip()
+            var scoreStr=localStorage.getItem(key_score)
+            if(scoreStr == null){
+                scoreHigh=0
+            }else{
+                scoreHigh= parseInt(scoreStr)
+            }
+            newLevel()
+        }
+        function newLevel(){
+            text = "level " + (level + 1 )
+            textAlpha = 1.0
+            createAsteroid()
+        }
     // func return newship after collosion
         function newShip(){
             return {
@@ -149,138 +259,89 @@
             }
             ship.canShoot = false
         }
-    // func jarak pesawat
-        function distBetweenPoint(x1,y1,x2,y2){
-            return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2))
-        }
-        function drawShip(x,y,a, colour="white"){
-        // draw ship
-            ctx.strokeStyle = colour
-            ctx.lineWidth = ship_size / 20
-            ctx.beginPath()
-            ctx.moveTo(
-                x + 4 / 3 * ship.r * Math.cos(a), y - 4 / 3 * ship.r * Math.sin(a)
-            )
-            ctx.lineTo(
-                x - ship.r * (2 / 3 * Math.cos(a) + Math.sin(a)), y + ship.r * (2 / 3 * Math.sin(a) - Math.cos(a))
-            )
-            ctx.lineTo(
-                x - ship.r * (2 / 3 * Math.cos(a) - Math.sin(a)), y + ship.r * (2 / 3 * Math.sin(a) + Math.cos(a))
-            )
-            ctx.closePath()
-            ctx.stroke()
-            // ctx.fill()
-        }
     // func fill when col
         function explodeShip(){
             ship.explodeTime=Math.ceil(ship_explo * FPS)
-            // ctx.fillStyle = "lime"
-            // ctx.strokeStyle="red"
-            // ctx.beginPath()
-            // ctx.arc(ship.x,ship.y,ship.r,0,Math.PI*2,false)
-            // ctx.fill()
-            // ctx.stroke()
         }
-    // func gameov
-        function gameOver(){
-            ship.dead=true
-            text="game over"
-            textAlpha=1.0
-        }
+
+
+    // var ship to object nship
+        // var ship = newShip()
     // asteroid
-        var aster=[]
-        createAsteroid()
-    // func create aster
-        function createAsteroid(){
-            aster=[];
-            var x,y
-            for (var i = 0; i < aster_num + level; i++){
-                do {
-                    x = Math.floor(Math.random() * canv.width)
-                    y = Math.floor(Math.random() * canv.height)
-                } while (distBetweenPoint(ship.x, ship.y, x, y) < aster_size * 2 + ship.r)
-                aster.push(newAsteroid(x, y,Math.ceil(aster_size / 2)))
-            }
-        }
-    // func new aster
-        function newAsteroid(x,y,r){
-        // object
-            var lvlMulti =1+0.1*level
-            var aster = {
-                x: x,
-                y: y,
-                xv: Math.random() * aster_spd * lvlMulti / FPS * (Math.random() < 0.5 ? 1 : -1),
-                yv: Math.random() * aster_spd * lvlMulti / FPS * (Math.random() < 0.5 ? 1 : -1),
-                r: r,
-                a: Math.random() * Math.PI * 2,
-                vert: Math.floor(Math.random() * (aster_vert + 1) + aster_vert / 2),
-                offs: []
-            }
-        // loop lakukan push ke array di objek aster
-            for (var i=0; i<aster.vert; i++) {
-                aster.offs.push(Math.random() * aster_tex * 2 + 1 - aster_tex)
-            }
-            return aster
-        }
-    // func newgame
-        function newGame(){
-            level = 0
-            ship = newShip()
-            newLevel()
-            lives =game_lives
-        }
-        function newLevel(){
-            text = "level " + (level + 1 )
-            textAlpha = 1.0
-            createAsteroid()
-        }
-    // func dest aster
-        function destroyAsteroid(index){
-            var x = aster[index].x
-            var y = aster[index].y
-            var r = aster[index].r
-        // split aster
-            if (r==Math.ceil(aster_size/2)){
-                aster.push(newAsteroid(x,y,Math.ceil(aster_size/4)))
-                aster.push(newAsteroid(x,y,Math.ceil(aster_size/4)))
-            }else if(r==Math.ceil(aster_size/4)){
-                aster.push(newAsteroid(x,y,Math.ceil(aster_size/8)))
-                aster.push(newAsteroid(x,y,Math.ceil(aster_size/8)))
-            }
-            aster.splice(index, 1)
-        // new level if no aster
-            if(aster.length==0){
-                level++
-                newLevel()
-            }
-        }
-    // func return newship after collosion
-        // function newShip(){
-        //     return {
-        //         x: canv.width / 2,
-        //         y: canv.height / 2,
-        //         r: ship_size / 2,
-        //         a: 90 / 180 * Math.PI,
-        //         rot: 0,
-        //         thrusting: false,
-        //         explodeTime:0,
-        //         blinkNum: Math.ceil(ship_invdur / ship_blink),
-        //         blinkTime: Math.ceil(ship_blink * FPS),
-        //         canShoot: true,
-        //         lasers:[],
-        //         thrust: {
-        //             x: 0,
-        //             y: 0
-        //         }
-        //     }
-        // }
-    //
+        // var aster=[]
+        // createAsteroid()
+
+
+    // UPDATE
         function update(){
             var blinkOn = ship.blinkNum % 2 == 0
             var exploding = ship.explodeTime>0
         // background
             ctx.fillStyle = "grey"
             ctx.fillRect(0, 0, canv.width, canv.height)
+        // asteroid
+            var x, y, r, a, vert, offs
+            for(var i = 0; i < aster.length; i++){
+                ctx.strokeStyle = "red"
+                ctx.lineWidth = ship_size / 20
+            // 
+                x = aster[i].x
+                y = aster[i].y
+                r = aster[i].r
+                a = aster[i].a
+                vert = aster[i].vert
+                offs = aster[i].offs
+            // 
+                ctx.beginPath()
+                ctx.moveTo(
+                    x + r * offs[0] * Math.cos(a),
+                    y + r * offs[0] * Math.sin(a)
+                )
+            // 
+                for (var j = 1; j < vert; j++){
+                    ctx.lineTo(
+                        x + r * offs[j]*Math.cos(a+j*Math.PI * 2 / vert),
+                        y + r * offs[j]*Math.sin(a+j*Math.PI * 2 / vert)
+                    )
+                }
+                ctx.closePath()
+                ctx.stroke()
+            // asteroid collision
+                if (sh_bounding){
+                    ctx.strokeStyle="lime"
+                    ctx.beginPath()
+                    ctx.arc(x, y, r, 0, Math.PI *2, false)
+                    ctx.stroke()
+                }
+            }
+        // maju
+            if (ship.thrusting && !ship.dead){
+                ship.thrust.x += ship_thrust * Math.cos(ship.a) / FPS
+                ship.thrust.y -= ship_thrust * Math.sin(ship.a) / FPS
+                
+                if(!exploding && blinkOn){
+            // efek api roket
+                    ctx.fillStyle ="Orange"
+                    ctx.strokeStyle ="yellow"
+                    ctx.lineWidth = ship_size / 20
+                    ctx.beginPath()
+                    ctx.moveTo(
+                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) + 0.5 * Math.sin(ship.a)), ship.y + ship.r * (2 / 3 * Math.sin(ship.a) - 0.5 * Math.cos(ship.a))
+                    )
+                    ctx.lineTo(
+                        ship.x -ship.r * 4/3 * Math.cos(ship.a), ship.y +ship.r * 4/3 * Math.sin(ship.a)
+                    )
+                    ctx.lineTo(
+                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) - 0.5*Math.sin(ship.a)), ship.y + ship.r * (2 / 3 * Math.sin(ship.a) + 0.5*Math.cos(ship.a))
+                    )
+                    ctx.closePath()
+                    ctx.fill()
+                    ctx.stroke()
+                }
+            } else {
+                ship.thrust.x -= friction * ship.thrust.x / FPS
+                ship.thrust.y -= friction * ship.thrust.y / FPS
+            }
         // spaceship
         // exploding
             if(!exploding){
@@ -318,11 +379,12 @@
             }
         // ship circ col
             if (sh_bounding){
-                    ctx.strokeStyle="lime"
-                    ctx.beginPath()
-                    ctx.arc(ship.x, ship.y, ship.r, 0, Math.PI * 2, false)
-                    ctx.stroke()
-                }
+                ctx.strokeStyle="lime"
+                ctx.beginPath()
+                ctx.arc(ship.x, ship.y, ship.r, 0, Math.PI * 2, false)
+                ctx.stroke()
+            }
+        // draw center dot 
             // if(sh_centerdot){
             //     ctx.fillStyle="red"
             //     ctx.fillRect(ship.x-1,ship.y-1,2,2)
@@ -368,6 +430,18 @@
                 lifeColour = exploding && i==lives - 1 ? "red" : "white"
                 drawShip(ship_size+i*ship_size*1.2,ship_size,0.5* Math.PI, lifeColour)
             }
+        // draw score
+            ctx.textAlign="right"
+            ctx.textBaseline="middle"
+            ctx.fillStyle="white"
+            ctx.font = "25px helvetica neue"
+            ctx.fillText(score, canv.width-ship_size/2, ship_size)
+        // draw scorehigh
+            ctx.textAlign="center"
+            ctx.textBaseline="middle"
+            ctx.fillStyle="white"
+            ctx.font = "15px helvetica neue"
+            ctx.fillText("high score "+scoreHigh, canv.width/2, ship_size)
         // laser hit aster
             var ax, ay, ar, lx, ly
             for(var i=aster.length-1;i>=0;i--){
@@ -399,7 +473,7 @@
                         }
                     }
                 }
-            // shiprotasi
+            // ship rotasi
                 ship.a += ship.rot
             // maju
                 ship.x += ship.thrust.x
@@ -413,69 +487,6 @@
                     }else{
                         ship = newShip()
                     }
-                }
-            }
-        // maju
-            if (ship.thrusting && !ship.dead){
-                ship.thrust.x += ship_thrust * Math.cos(ship.a) / FPS
-                ship.thrust.y -= ship_thrust * Math.sin(ship.a) / FPS
-                
-                if(!exploding && blinkOn){
-            // efek api roket
-                    ctx.fillStyle ="Orange"
-                    ctx.strokeStyle ="yellow"
-                    ctx.lineWidth = ship_size / 20
-                    ctx.beginPath()
-                    ctx.moveTo(
-                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) + 0.5 * Math.sin(ship.a)), ship.y + ship.r * (2 / 3 * Math.sin(ship.a) - 0.5 * Math.cos(ship.a))
-                    )
-                    ctx.lineTo(
-                        ship.x -ship.r * 4/3 * Math.cos(ship.a), ship.y +ship.r * 4/3 * Math.sin(ship.a)
-                    )
-                    ctx.lineTo(
-                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) - 0.5*Math.sin(ship.a)), ship.y + ship.r * (2 / 3 * Math.sin(ship.a) + 0.5*Math.cos(ship.a))
-                    )
-                    ctx.closePath()
-                    ctx.fill()
-                    ctx.stroke()
-                }
-            } else {
-                ship.thrust.x -= friction * ship.thrust.x / FPS
-                ship.thrust.y -= friction * ship.thrust.y / FPS
-            }
-        // asteroid
-            var x, y, r, a, vert, offs
-            for(var i = 0; i < aster.length; i++){
-                ctx.strokeStyle = "red"
-                ctx.lineWidth = ship_size / 20
-            // 
-                x = aster[i].x
-                y = aster[i].y
-                r = aster[i].r
-                a = aster[i].a
-                vert = aster[i].vert
-                offs = aster[i].offs
-            // 
-                ctx.beginPath()
-                ctx.moveTo(
-                    x + r * offs[0] * Math.cos(a),
-                    y + r * offs[0] * Math.sin(a)
-                )
-            // 
-                for (var j = 1; j < vert; j++){
-                    ctx.lineTo(
-                        x + r * offs[j]*Math.cos(a+j*Math.PI * 2 / vert),
-                        y + r * offs[j]*Math.sin(a+j*Math.PI * 2 / vert)
-                    )
-                }
-                ctx.closePath()
-                ctx.stroke()
-            // asteroid collision
-                if (sh_bounding){
-                    ctx.strokeStyle="lime"
-                    ctx.beginPath()
-                    ctx.arc(x, y, r, 0, Math.PI *2, false)
-                    ctx.stroke()
                 }
             }
         // ship edge canv
