@@ -58,6 +58,8 @@
     // canvas
         const canv = document.getElementById("gameCanvas")
         const ctx = canv.getContext("2d")
+    // sound
+        var fxLaser = new Sound("laser.m4a",5,0.1)
     // game parameters
         var level, roid, ship, text, textAlpha,lives, score,scoreHigh
         newGame()
@@ -256,6 +258,7 @@
                         explodeTime:0
                     }
                 )
+                fxLaser.play()
             }
             ship.canShoot = false
         }
@@ -263,7 +266,20 @@
         function explodeShip(){
             ship.explodeTime=Math.ceil(ship_explo * FPS)
         }
+    // func sound
+        function Sound(src, maxStreams=1,vol=1.0){
+            this.streamNum=0
+            this.streams=[]
+            for(var i=0;i<maxStreams;i++){
+                this.streams.push(new Audio(src))
+                this.streams[i].volume=vol
+            }
+            this.play=function(){
+                this.streamNum=(this.streamNum + 1) % maxStreams
+                this.streams[this.streamNum].play()
 
+            }
+        }
 
     // var ship to object nship
         // var ship = newShip()
@@ -548,9 +564,6 @@
                     aster[i].y = 0 - aster[i].r
                 }
             }
-        // 
-            // ctx.fillStyle = "green"
-            // ctx.fillRect(ship.x - 1, ship.y - 1, 2, 2)
         }
         </script>
 </body>
